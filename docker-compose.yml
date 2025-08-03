@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: woktopup-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: woktopup
+    ports:
+      - "3307:3306" # Port host:container
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - woknet
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./golang-woktopup
+      dockerfile: Dockerfile
+    container_name: woktopup-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./golang-woktopup/.env
+    networks:
+      - woknet
+
+  frontend:
+    build:
+      context: ./frontend-woktopup
+      dockerfile: Dockerfile
+    container_name: woktopup-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80" # ganti 5173:5173 jadi 8081:80
+    depends_on:
+      - backend
+    networks:
+      - woknet
+
+
+volumes:
+  db_data:
+
+networks:
+  woknet:
+    driver: bridge
